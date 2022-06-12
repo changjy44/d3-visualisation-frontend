@@ -14,7 +14,20 @@
   />
   <!-- <link rel="stylesheet" href="/resources/demos/style.css" /> -->
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="css/style.css" />
+  <link
+    href="C:\Users\chang\OneDrive - National University of Singapore\Desktop\Internship\d3 project\d3-frontend-http\styles.css"
+    rel="stylesheet"
+    type="text/css"
+  />
+  <style>
+    .circles:hover {
+      fill: rgb(231, 231, 231);
+    }
+
+    .lines:hover {
+      stroke: rgb(231, 231, 231);
+    }
+  </style>
 </head>
 <body>
   <br />
@@ -26,11 +39,26 @@
         <svg width="600" height="600" style="outline: 3px solid black"></svg>
       </div>
       <div class="col">
-        <table id="productTable" class="table">
+        <h3>Neighbours Table for Nodes</h3>
+        <table id="nodeTable" class="table">
           <tr>
-            <th>Name</th>
-            <th>Type</th>
+            <th>Neighbours</th>
+            <th>Start Year</th>
             <th>Details</th>
+          </tr>
+
+          <tr>
+            <td id="nameOfThing">Name of thing</td>
+            <td id="typeOfThing">Type of thing</td>
+            <td>2000 - 2002</td>
+          </tr>
+        </table>
+        <h3>Details Table for Links</h3>
+        <table id="linkTable" class="table">
+          <tr>
+            <th>Source</th>
+            <th>Target</th>
+            <th>Start Year</th>
           </tr>
 
           <tr>
@@ -62,8 +90,26 @@
             <!-- <div class="row"> -->
             <label for="name">Name</label>
             <input name="name" id="name" />
-            <label for="dummy"> Dummy </label>
-            <input name="dummy" id="dummy" />
+            <br />
+            <label for="custom">Input "true" for custom</label>
+            <input name="custom" id="custom" />
+            <br />
+            <label for="displayedCustom"> Displayed Query</label>
+            <textarea
+              readonly
+              name="displayedCustom"
+              id="displayedCustom"
+              style="height: 10rem; width: 30rem"
+            >
+            </textarea>
+            <br />
+            <label for="customQuery"> Custom Query </label>
+            <textarea
+              name="customQuery"
+              id="customQuery"
+              style="height: 10rem; width: 30rem"
+            >
+            </textarea>
             <!-- </div> -->
             <!-- <br /> -->
             <button type="button" id="submitBtn" class="btn btn-primary">
@@ -90,16 +136,20 @@
     var svg = d3.select("svg"),
       width = +svg.attr("width"),
       height = +svg.attr("height");
-    // .call(
-    //   d3.zoom().on("zoom", function () {
-    //     svg.attr("transform", d3.event.transform);
-    //   })
-    // );
+
+    svg.call(
+      d3.zoom().on("zoom", function () {
+        console.log(d3.event);
+        d3.select("svg .links").attr("transform", d3.event.transform);
+        d3.select("svg .nodes").attr("transform", d3.event.transform);
+      })
+    );
 
     var color = d3.scaleOrdinal(d3.schemeCategory10);
 
     // Add "forces" to the simulation he
     var simulation;
+    let tableEntries = 1;
     // .forceSimulation()
     // .force("center", d3.forceCenter(width / 2, height / 2))
     // .force("charge", d3.forceManyBody().strength(-100))
@@ -123,10 +173,34 @@
         values: [2000],
         slide: function (event, ui) {
           $("#amount").val(ui.values[0]);
+          const person = $("#name").val();
+          const currYear = ui.values[0];
+          // const query = `MATCH(p1:Player) -[r1:WORKED_AT] -> (c:Club) <-[r2:WORKED_AT]- (p2:Player) WHERE (p1.Name ='${person}') AND (r1.start <= ${currYear}) AND (r2.end >= r1.start AND  r2.start <= r1.end) RETURN p1,r1,c,r2,p2`;
+          const query = `MATCH(p1:Player) -[r1:WORKED_AT] -> (c1:Club) <-[r2:WORKED_AT]- (p2:Player) -[r3:WORKED_AT]-> (c2:Club)
+WHERE (p1.Name ="${person}") AND (r1.start <= ${currYear}) AND (r2.start <= ${currYear}) AND (r3.start<= ${currYear})
+RETURN p1,r1,c1,r2,p2,r3,c2`;
+          $("#displayedCustom").val(query);
         },
       });
 
       $("#amount").val($("#slider-range").slider("values", 0));
+
+      // $("#amount").on("input", (e) => {
+      //   console.log("changed!");
+      // });
+
+      $("#name").on("input", (event) => {
+        // console.log(event);
+        const person = event.target.value;
+        const currYear = $("#amount").val();
+        // const query = `MATCH(p1:Player) -[r1:WORKED_AT] -> (c:Club) <-[r2:WORKED_AT]- (p2:Player) WHERE (p1.Name ='${person}') AND (r1.start <= ${currYear}) AND (r2.end >= r1.start AND  r2.start <= r1.end) RETURN p1,r1,c,r2,p2`;
+        const query = `MATCH(p1:Player) -[r1:WORKED_AT] -> (c1:Club) <-[r2:WORKED_AT]- (p2:Player) -[r3:WORKED_AT]-> (c2:Club)
+WHERE (p1.Name ="${person}") AND (r1.start <= ${currYear}) AND (r2.start <= ${currYear}) AND (r3.start<= ${currYear})
+RETURN p1,r1,c1,r2,p2,r3,c2`;
+        $("#displayedCustom").val(query);
+      });
+
+      // $("#displayedCustom").val($("#amount").on());
 
       $("#submitBtn").click(function () {
         $("#myForm").submit();
@@ -139,7 +213,7 @@
           .forceSimulation()
           .force("center", d3.forceCenter(width / 2, height / 2))
           .force("charge", d3.forceManyBody().strength(-20))
-          .force("collide", d3.forceCollide(50).strength(0.9))
+          .force("collide", d3.forceCollide(80).strength(0.5))
           .force(
             "link",
             d3
@@ -155,11 +229,23 @@
           .split("&")
           .map((data) => data.split("=")[1]);
 
-        console.log(dataStringFields);
+        /*
+        [0] is year
+        [1] is name
+        [2] is true/false
+        [3] is displayedQuery
+        [4] is customeQuery */
+
+        query = decodeURIComponent(
+          // decodeURI(dataStringFields[2]).replace(/\s/g, "")
+          dataStringFields[2] === "true"
+            ? decodeURI(dataStringFields[4]).trim()
+            : decodeURI(dataStringFields[3]).trim()
+        );
+        console.log(query);
+
         const jsonObject = {
-          year: dataStringFields[0],
-          name: dataStringFields[1],
-          dummy: dataStringFields[2],
+          query: query,
         };
         console.log(jsonObject);
 
@@ -178,23 +264,47 @@
 
             // console.log(graph);
 
-            if (graph.nodes.length > 0) {
-              $("tr:last-child").remove();
-
-              $("#productTable").append(
-                "<tr>" +
-                  "<td>" +
-                  graph.nodes[0].id +
-                  "</td>" +
-                  "<td>" +
-                  graph.nodes[0].label +
-                  "</td>" +
-                  "<td>2000 - 2002</td>" +
-                  "</tr>"
-              );
-            }
-
             // Add lines for every link in the dataset
+            var link = svg
+              .append("g")
+              .attr("class", "links")
+              .selectAll("path")
+              .data(graph.links)
+              .enter()
+              .append("path")
+              .attr("class", "lines")
+              .attr("stroke", (d) => (d.instanceNumber === 1 ? "red" : "black"))
+              .style("fill", "none")
+              .attr("stroke-width", function (d) {
+                return 2;
+              })
+              .on("click", (e) => {
+                // console.log("hey");
+                console.log(e);
+                $("#linkTable tr:last-child").remove();
+
+                $("#linkTable").append(
+                  "<tr>" +
+                    "<td>" +
+                    // "hi" +
+                    e.source.id +
+                    "</td>" +
+                    "<td>" +
+                    // "hello" +
+                    e.target.id +
+                    "</td>" +
+                    "<td>" +
+                    e.startYear +
+                    "</td>" +
+                    "</tr>"
+                );
+              });
+
+            // .attr("d", d => buildArc(d))
+            // .attr("dr", 50);
+            // .attr("stroke-length", (d) => 20);
+
+            /*
             var link = svg
               .append("g")
 
@@ -203,14 +313,8 @@
               .data(graph.links)
               .enter()
               .append("path")
-              .attr("stroke", (d) => (d.instance == 1 ? "red" : "black"))
-              .style("fill", "none");
-            // .attr("stroke-width", function (d) {
-            //   return Math.sqrt(d.value);
-            // });
-            // .attr("d", d => buildArc(d))
-            // .attr("dr", 50);
-            // .attr("stroke-length", (d) => 20);
+              .attr("stroke", (d) => (d.instanceNumber == 1 ? "red" : "black"))
+              .style("fill", "none");*/
 
             // Add circles for every node in the dataset
             var node = svg
@@ -221,7 +325,46 @@
               .enter()
               .append("g")
               .attr("transform", (d) => `translate(${width / 2},${height / 2})`)
-              .on("click", () => console.log("working"))
+
+              .on("click", (e) => {
+                console.log(e);
+                const name = e.id;
+                // console.log(name);
+                for (let i = 0; i < tableEntries; i++) {
+                  $("#nodeTable tr:last-child").remove();
+                }
+
+                const filtered = graph.links.filter((data) => {
+                  // console.log(data.source.id);
+                  // console.log(name);
+                  const nameOfReference =
+                    e.label === "Club" ? data.target.id : data.source.id;
+                  return nameOfReference === name;
+                });
+
+                tableEntries = filtered.length;
+
+                filtered.forEach((entry) => {
+                  const nameOfRefence =
+                    e.label === "Club" ? entry.source.id : entry.target.id;
+                  $("#nodeTable").append(
+                    "<tr>" +
+                      "<td>" +
+                      // "hi" +
+                      nameOfRefence +
+                      "</td>" +
+                      "<td>" +
+                      // "hello" +
+                      entry.startYear +
+                      "</td>" +
+                      "<td>" +
+                      "Dummy Details" +
+                      // e.startYear +
+                      "</td>" +
+                      "</tr>"
+                  );
+                });
+              })
 
               // .attr("transform", (d) => {
               //   console.log(d);
@@ -242,10 +385,12 @@
             // })
             var circles = node
               .append("circle")
+              .attr("class", "circles")
               .attr("r", (d) => {
-                return d.group === 1 ? 20 : 25;
+                return d.group === 2 ? 50 : 40;
               })
               .style("stroke", (d) => "black")
+              // .attr("onMouseOver", "this.style.color =  rgb(231, 231, 231);")
               .attr("fill", function (d) {
                 // return "white";
                 return color(d.group);
@@ -253,7 +398,8 @@
 
             var text = node
               .append("text")
-              .attr("dx", -12)
+              .attr("dx", (d) => -d.id.length * 3)
+              // .style("text-align", "left")
               .text((d) => d.id);
 
             // Basic tooltips
@@ -272,41 +418,43 @@
 
             // Dynamically update the position of the nodes/links as time passes
             function ticked() {
-              link.attr("d", function (d) {
-                const startX = d.source.x;
-                const startY = d.source.y;
-                const endX = d.target.x;
-                const endY = d.target.y;
-                const dr = d.instance * 50;
-                const arcPath = [
-                  "M",
-                  startX,
-                  startY,
-                  "A",
-                  dr,
-                  ",",
-                  dr,
-                  0,
-                  0,
-                  ",",
-                  startX < endX ? 1 : 0,
-                  endX,
-                  endY,
-                ].join(" ");
-                return arcPath;
-              });
-              // .attr("x1", function (d) {
-              //   return d.source.x;
-              // })
-              // .attr("y1", function (d) {
-              //   return d.source.y;
-              // })
-              // .attr("x2", function (d) {
-              //   return d.target.x;
-              // })
-              // .attr("y2", function (d) {
-              //   return d.target.y;
-              // });
+              link
+                .attr("d", function (d) {
+                  const startX = d.source.x;
+                  const startY = d.source.y;
+                  const endX = d.target.x;
+                  const endY = d.target.y;
+                  const dr = d.unique === 1 ? 0 : 1;
+                  const arcPath = [
+                    "M",
+                    startX,
+                    startY,
+                    "A",
+                    dr,
+                    ",",
+                    dr,
+                    0,
+                    0,
+                    ",",
+                    startX < endX ? 1 : 0,
+                    endX,
+                    endY,
+                  ].join(" ");
+                  return arcPath;
+                })
+
+                .attr("x1", function (d) {
+                  return d.source.x;
+                })
+                .attr("y1", function (d) {
+                  return d.source.y;
+                })
+                .attr("x2", function (d) {
+                  return d.target.x;
+                })
+                .attr("y2", function (d) {
+                  return d.target.y;
+                });
 
               node
                 .attr("cx", function (d) {
